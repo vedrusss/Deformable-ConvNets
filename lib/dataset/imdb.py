@@ -1,4 +1,19 @@
 """
+IMDB.PY
+Created on 11/13/2018 by A.Antonenka
+
+Copyright (c) 2018, Arlo Technologies, Inc.
+350 East Plumeria, San Jose California, 95134, U.S.A.
+All rights reserved.
+
+This software is the confidential and proprietary information of
+Arlo Technologies, Inc. ("Confidential Information"). You shall not
+disclose such Confidential Information and shall use it only in
+accordance with the terms of the license agreement you entered into
+with Arlo Technologies.
+"""
+"""
+Arlo modification of original imdb.py provided by Deformable-ConvNets.
 General image database
 An image database creates a list of relative image path called image_set_index and
 transform index to absolute image path. As to training, it is necessary that ground
@@ -7,6 +22,8 @@ roidb
 basic format [image_index]
 ['image', 'height', 'width', 'flipped',
 'boxes', 'gt_classes', 'gt_overlaps', 'max_classes', 'max_overlaps', 'bbox_targets']
+
+Main modification: added method 'append_rotated_images(self, roidb, max_rotation_deg=30, rotation_step=5)'
 """
 
 import os
@@ -15,6 +32,7 @@ import numpy as np
 from PIL import Image
 from bbox.bbox_transform import bbox_overlaps
 from multiprocessing import Pool, cpu_count
+import cv2
 
 def get_flipped_entry_outclass_wrapper(IMDB_instance, seg_rec):
     return IMDB_instance.get_flipped_entry(seg_rec)
@@ -208,6 +226,8 @@ class IMDB(object):
             oldx2 = boxes[:, 2].copy()
             boxes[:, 0] = roi_rec['width'] - oldx2 - 1
             boxes[:, 2] = roi_rec['width'] - oldx1 - 1
+            for b in range(len(boxes)):
+                if boxes[b][2] < boxes[b][0]: boxes[b][0] = 0
             assert (boxes[:, 2] >= boxes[:, 0]).all()
             entry = {'image': roi_rec['image'],
                      'height': roi_rec['height'],
@@ -228,6 +248,67 @@ class IMDB(object):
 
         self.image_set_index *= 2
         return roidb
+
+    def append_rotated_images(self, roidb, max_rotation_deg=30, rotation_step=5):
+# not known how well it works after flipping. Should check implementation
+
+        print('Append rotated images to roidb')
+        num_images = self.num_images
+        widths = self._get_widths()
+        heights = self._get_heights()
+        rotation_range = xrange(-max_rotation_deg, max_rotation_deg + rotation_step, rotation_step)
+        num_rotations = len(rotation_range)
+        for i in xrange(num_images/2):
+            roi_rec = roidb[i]
+            boxes = roidb[i]['boxes'].copy()
+            num_boxes = boxes.shape[0]
+            #print "Num of boxes :", num_boxes        
+            l1 = np.hstack((boxes[:,[0,1]].copy(),np.ones((num_boxes, 1))))
+            l2 = np.hstack((boxes[:,[2,1]].copy(),np.ones((num_boxes, 1))))
+            l3 = np.hstack((boxes[:,[2,3]].copy(),np.ones((num_boxes, 1))))
+            l4 = np.hstack((boxes[:,[0,3]].copy(),np.ones((num_boxes, 1))))
+            for deg in rotation_range:
+                if deg ==0:
+                    continue
+                #Get rotation matrix 
+                M = cv2.getRotationMatrix2D((widths[i]/2,heights[i]/2),deg,1)
+                lr1 = np.dot(M, np.transpose(l1))
+                lr2 = np.dot(M, np.transpose(l2))
+                lr3 = np.dot(M, np.transpose(l3))
+                lr4 = np.dot(M, np.transpose(l4))
+                xmin = np.amin((lr1[0,:], lr2[0,:], lr3[0,:], lr4[0,:]),axis = 0)
+                ymin = np.amin((lr1[1,:], lr2[1,:], lr3[1,:], lr4[1,:]),axis = 0)
+                xmax = np.amax((lr1[0,:], lr2[0,:], lr3[0,:], lr4[0,:]),axis = 0)
+                ymax = np.amax((lr1[1,:], lr2[1,:], lr3[1,:], lr4[1,:]),axis = 0)
+                boxes = np.transpose((xmin, ymin, xmax, ymax))
+                boxes = boxes.clip(min=0)
+                boxes[:,0] = boxes[:,0].clip(max=widths[i])
+                boxes[:,1] = boxes[:,1].clip(max=heights[i])
+                boxes[:,2] = boxes[:,2].clip(max=widths[i])
+                boxes[:,3] = boxes[:,3].clip(max=heights[i])
+                assert (boxes[:, 2] >= boxes[:, 0]).all()
+                entry = {'image': roi_rec['image'],
+                         'height': roi_rec['height'],
+                         'width': roi_rec['width'],
+                         'boxes' : boxes,
+                         'gt_overlaps' : roidb[i]['gt_overlaps'],
+                         'gt_classes' : roidb[i]['gt_classes'],
+                         'max_classes': roidb[i]['max_classes'],
+                         'max_overlaps': roidb[i]['max_overlaps'],
+                         'flipped' : False,
+                         'rotated' : deg}
+                roidb.append(entry)
+        #append image index
+        orig_image_index = self.image_set_index[:num_images/2]
+        for idx in orig_image_index:
+            self.image_set_index += [idx]*(num_rotations-1)
+        return roidb
+
+    def _get_widths(self):
+        return [Image.open(self.image_path_at(i)).size[0] for i in xrange(self.num_images)]
+    
+    def _get_heights(self):
+        return [Image.open(self.image_path_at(i)).size[1] for i in xrange(self.num_images)]
 
     def flip_and_save(self, image_path):
         """

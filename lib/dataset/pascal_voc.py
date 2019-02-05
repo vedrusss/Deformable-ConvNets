@@ -22,6 +22,7 @@ import PIL
 from imdb import IMDB
 from pascal_voc_eval import voc_eval, voc_eval_sds
 from ds_utils import unique_boxes, filter_small_boxes
+from arlo_like_pascal_voc import Arlo_Classes
 
 class PascalVOC(IMDB):
     def __init__(self, image_set, root_path, devkit_path, result_path=None, mask_size=-1, binary_thresh=None):
@@ -41,12 +42,13 @@ class PascalVOC(IMDB):
         self.devkit_path = devkit_path
         self.data_path = os.path.join(devkit_path, 'VOC' + year)
 
-        self.classes = ['__background__',  # always index 0
-                        'aeroplane', 'bicycle', 'bird', 'boat',
-                        'bottle', 'bus', 'car', 'cat', 'chair',
-                        'cow', 'diningtable', 'dog', 'horse',
-                        'motorbike', 'person', 'pottedplant',
-                        'sheep', 'sofa', 'train', 'tvmonitor']
+        self.classes = ['__background__'] + Arlo_Classes
+        #self.classes = ['__background__',  # always index 0
+        #                'aeroplane', 'bicycle', 'bird', 'boat',
+        #                'bottle', 'bus', 'car', 'cat', 'chair',
+        #                'cow', 'diningtable', 'dog', 'horse',
+        #                'motorbike', 'person', 'pottedplant',
+        #                'sheep', 'sofa', 'train', 'tvmonitor']
         self.num_classes = len(self.classes)
         self.image_set_index = self.load_image_set_index()
         self.num_images = len(self.image_set_index)
@@ -154,20 +156,21 @@ class PascalVOC(IMDB):
         boxes = np.zeros((num_objs, 4), dtype=np.uint16)
         gt_classes = np.zeros((num_objs), dtype=np.int32)
         overlaps = np.zeros((num_objs, self.num_classes), dtype=np.float32)
-
+  
         class_to_index = dict(zip(self.classes, range(self.num_classes)))
         # Load object bounding boxes into a data frame.
         for ix, obj in enumerate(objs):
             bbox = obj.find('bndbox')
             # Make pixel indexes 0-based
-            x1 = float(bbox.find('xmin').text) - 1
-            y1 = float(bbox.find('ymin').text) - 1
-            x2 = float(bbox.find('xmax').text) - 1
-            y2 = float(bbox.find('ymax').text) - 1
+            x1 = float(bbox.find('xmin').text)# - 1
+            y1 = float(bbox.find('ymin').text)# - 1
+            x2 = float(bbox.find('xmax').text)# - 1
+            y2 = float(bbox.find('ymax').text)# - 1
             cls = class_to_index[obj.find('name').text.lower().strip()]
             boxes[ix, :] = [x1, y1, x2, y2]
             gt_classes[ix] = cls
             overlaps[ix, cls] = 1.0
+
 
         roi_rec.update({'boxes': boxes,
                         'gt_classes': gt_classes,
