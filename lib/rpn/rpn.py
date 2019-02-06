@@ -22,6 +22,8 @@ label =
      'bbox_weight': [batch_size, num_anchors, feat_height, feat_width]}
 """
 
+# Edited by A.Antonenko from Arlo Technologies, Inc to provide additional training data augumentation by image rotation
+
 import numpy as np
 import numpy.random as npr
 
@@ -62,9 +64,13 @@ def get_rpn_batch(roidb, cfg):
     # gt boxes: (x1, y1, x2, y2, cls)
     if roidb[0]['gt_classes'].size > 0:
         gt_inds = np.where(roidb[0]['gt_classes'] != 0)[0]
-        gt_boxes = np.empty((roidb[0]['boxes'].shape[0], 5), dtype=np.float32)
-        gt_boxes[:, 0:4] = roidb[0]['boxes'][gt_inds, :]
-        gt_boxes[:, 4] = roidb[0]['gt_classes'][gt_inds]
+        if len(gt_inds) == 0:
+            gt_boxes = np.empty((0, 5), dtype=np.float32)
+        else:
+            gt_boxes = np.empty((len(gt_inds), 5), dtype=np.float32)
+            #print 'rpn shapes :', gt_boxes.shape,' ',roidb[0]['boxes'].shape,' ',len(gt_inds)
+            gt_boxes[:, 0:4] = roidb[0]['boxes'][gt_inds, :]
+            gt_boxes[:, 4] = roidb[0]['gt_classes'][gt_inds]
     else:
         gt_boxes = np.empty((0, 5), dtype=np.float32)
 

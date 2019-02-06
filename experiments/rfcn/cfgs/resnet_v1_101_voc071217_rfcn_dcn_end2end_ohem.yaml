@@ -49,24 +49,24 @@ network:
   NUM_ANCHORS: 9
 dataset:
   NUM_CLASSES: 11
-  dataset: Arlo_Like_PascalVOC+PascalVOC+PascalVOC+PascalVOC
+  dataset: Arlo_Like_PascalVOC
   dataset_path: /home/ubuntu/ObjectDetection/DeformableConvNets/Deformable-ConvNets/data/VOCdevkit
-  image_set: fp_20_train.txt+2007_trainval+2012_trainval+2017_trainval
+  image_set: fp_20_train.txt
   root_path: /home/ubuntu/ObjectDetection/DeformableConvNets/Deformable-ConvNets/data/VOCdevkit
   test_image_set: fp_20_train.txt
   proposal: rpn
 TRAIN:
-  lr: 0.00005
-  lr_step: '4.83'
+  lr: 0.0005
+  lr_step: '12,13,14' #'4.83'
   warmup: true
-  warmup_lr: 0.000005
+  warmup_lr: 0.00005
   # typically we will use 4000 warmup step for single GPU on VOC
   warmup_step: 1000
   begin_epoch: 11
-  end_epoch: 14
+  end_epoch: 17
   model_prefix: 'rfcn_voc'
   # whether resume training
-  RESUME: false
+  RESUME: true #false
   # whether flip image
   FLIP: false
   # whether shuffle image

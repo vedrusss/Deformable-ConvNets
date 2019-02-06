@@ -5,6 +5,8 @@
 # Written by Yuwen Xiong
 # --------------------------------------------------------
 
+# Edited by A.Antonenko from Arlo Technologies, Inc to provide additional training data augumentation by image rotation
+
 import numpy as np
 import os
 import cv2
@@ -30,9 +32,15 @@ def get_image(roidb, config):
     for i in range(num_images):
         roi_rec = roidb[i]
         assert os.path.exists(roi_rec['image']), '%s does not exist'.format(roi_rec['image'])
-        im = cv2.imread(roi_rec['image'], cv2.IMREAD_COLOR|cv2.IMREAD_IGNORE_ORIENTATION)
+        im = cv2.imread(roi_rec['image'])#, cv2.IMREAD_COLOR|cv2.IMREAD_IGNORE_ORIENTATION)
         if roidb[i]['flipped']:
             im = im[:, ::-1, :]
+        if 'rotated' in roidb[i]:
+            if roidb[i]['rotated'] != 0:
+                #print 'Rotation image:', roidb[i]['rotated']
+                rows,cols,depth = im.shape
+                M = cv2.getRotationMatrix2D((cols/2,rows/2),roidb[i]['rotated'],1)
+                im = cv2.warpAffine(im,M,(cols,rows))
         new_rec = roi_rec.copy()
         scale_ind = random.randrange(len(config.SCALES))
         target_size = config.SCALES[scale_ind][0]

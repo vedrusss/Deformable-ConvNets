@@ -5,17 +5,23 @@
 # Written by Yuwen Xiong
 # --------------------------------------------------------
 
+# Edited by A.Antonenko from Arlo Technologies, Inc to provide additional training data augumentation by image rotation
+
 import numpy as np
 from dataset import *
 
 
 def load_gt_roidb(dataset_name, image_set_name, root_path, dataset_path, result_path=None,
-                  flip=False):
+                  flip=False, rotate=False, max_rotation_deg=30, rotation_step=5):
     """ load ground truth roidb """
+    print("Loading dataset {}, image_set {}, root_path {}, dataset_path {}".
+        format(dataset_name, image_set_name, root_path, dataset_path))
     imdb = eval(dataset_name)(image_set_name, root_path, dataset_path, result_path)
     roidb = imdb.gt_roidb()
     if flip:
         roidb = imdb.append_flipped_images(roidb)
+    if rotate:
+        roidb = imdb.append_rotated_images(roidb, max_rotation_deg, rotation_step)
     return roidb
 
 
